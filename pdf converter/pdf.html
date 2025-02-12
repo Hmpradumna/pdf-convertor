@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JPG to PDF Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.16.0/pdf-lib.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #preview { margin: 20px auto; max-width: 100%; display: none; }
+        button { padding: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>JPG to PDF Converter</h2>
+    <input type="file" id="imageInput" accept="image/jpeg">
+    <br><br>
+    <img id="preview" src="" alt="Image Preview">
+    <br><br>
+    <button onclick="convertToPDF()">Convert to PDF</button>
+
+    <script>
+        document.getElementById('imageInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview').src = e.target.result;
+                    document.getElementById('preview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function convertToPDF() {
+            const { PDFDocument } = PDFLib;
+            const fileInput = document.getElementById('imageInput');
+            if (!fileInput.files.length) {
+                alert("Please upload a JPG file first.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+
+            reader.onload = async function() {
+                const imageData = reader.result;
+
+                // Create a new PDF Document
+                const pdfDoc = await PDFDocument.create();
+                const page = pdfDoc.addPage();
+
+                // Embed the JPG image
+                const jpgImage = await pdfDoc.embedJpg(imageData);
+                const { width, height } = jpgImage.scale(1);
+
+                // Set page size to match the image
+                page.setSize(width, height);
+                page.drawImage(jpgImage, { x: 0, y: 0, width, height });
+
+                // Generate a unique file name using timestamp
+                const uniqueId = Date.now();
+                const fileName = `ps${uniqueId}.pdf`;
+
+                // Save the PDF and trigger download
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: "application/pdf" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName;
+                link.click();
+            };
+        }
+    </script>
+</body>
+</html>
