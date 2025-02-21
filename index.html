@@ -61,7 +61,7 @@
 
                 // Generate a unique file name using timestamp
                 const uniqueId = Date.now();
-                const fileName = `ps${uniqueId}.pdf`;
+                const fileName = `${uniqueId}.pdf`;
 
                 // Save the PDF and trigger download
                 const pdfBytes = await pdfDoc.save();
