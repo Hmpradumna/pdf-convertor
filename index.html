@@ -7,70 +7,66 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.16.0/pdf-lib.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        #preview { margin: 20px auto; max-width: 100%; display: none; }
+        .preview-container { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+        .preview-container img { max-width: 150px; margin: 10px; display: block; }
         button { padding: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
     <h2>JPG to PDF Converter</h2>
-    <input type="file" id="imageInput" accept="image/jpeg">
-    <br><br>
-    <img id="preview" src="" alt="Image Preview">
-    <br><br>
+    <input type="file" id="imageInput" accept="image/jpeg" multiple>
+    <div class="preview-container" id="previewContainer"></div>
+    <br>
     <button onclick="convertToPDF()">Convert to PDF</button>
 
     <script>
         document.getElementById('imageInput').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.innerHTML = ''; // Clear previous previews
+            
+            Array.from(event.target.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    document.getElementById('preview').src = e.target.result;
-                    document.getElementById('preview').style.display = 'block';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    previewContainer.appendChild(img);
                 };
                 reader.readAsDataURL(file);
-            }
+            });
         });
 
         async function convertToPDF() {
             const { PDFDocument } = PDFLib;
             const fileInput = document.getElementById('imageInput');
             if (!fileInput.files.length) {
-                alert("Please upload a JPG file first.");
+                alert("Please upload at least one JPG file.");
                 return;
             }
 
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
+            const pdfDoc = await PDFDocument.create();
 
-            reader.onload = async function() {
-                const imageData = reader.result;
-
-                // Create a new PDF Document
-                const pdfDoc = await PDFDocument.create();
-                const page = pdfDoc.addPage();
-
-                // Embed the JPG image
+            for (const file of fileInput.files) {
+                const reader = new FileReader();
+                const readFile = new Promise(resolve => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(file);
+                });
+                
+                const imageData = await readFile;
                 const jpgImage = await pdfDoc.embedJpg(imageData);
                 const { width, height } = jpgImage.scale(1);
-
-                // Set page size to match the image
-                page.setSize(width, height);
+                const page = pdfDoc.addPage([width, height]);
                 page.drawImage(jpgImage, { x: 0, y: 0, width, height });
+            }
 
-                // Generate a unique file name using timestamp
-                const uniqueId = Date.now();
-                const fileName = `${uniqueId}.pdf`;
-
-                // Save the PDF and trigger download
-                const pdfBytes = await pdfDoc.save();
-                const blob = new Blob([pdfBytes], { type: "application/pdf" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = fileName;
-                link.click();
-            };
+            const uniqueId = Date.now();
+            const fileName = `${uniqueId}.pdf`;
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
         }
     </script>
 </body>
